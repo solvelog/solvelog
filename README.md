@@ -10,10 +10,6 @@ heatmap, difficulty distributions and your recent submissions.
 > the userscript and this README. Like any software — and especially AI-written software — it may contain
 > mistakes: please read the code before trusting it with your sign-in, and
 > [open an issue](https://github.com/solvelog/solvelog/issues) if something looks wrong.
->
-> SolveLog 的代码主要由 **Claude Opus 5.5** 完成。
-> 其中可能存在错误：在把登录信息交给它之前请先阅读代码，发现问题欢迎提
-> [Issue](https://github.com/solvelog/solvelog/issues)。
 
 | Judge | How SolveLog reads it | Sign-in needed |
 |---|---|---|
