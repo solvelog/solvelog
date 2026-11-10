@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SolveLog</title>
+<script>
+// Resolve the theme before first paint: saved choice (native UserDefaults wins) → system.
+(function () {
+  var saved = window.__theme;                       // the app passes the saved choice to the page
+  try { saved = saved || localStorage.getItem("solvelog.theme") || "auto"; } catch (e) { saved = saved || "auto"; }
+  var mq = window.matchMedia("(prefers-color-scheme: dark)");
+  window.__theme = saved;
+  window.__applyTheme = function () {
+    document.documentElement.dataset.dark =
+      (saved === "dark" || (saved === "auto" && mq.matches)) ? "1" : "0";
+  };
+  window.__setTheme = function (v) {
+    saved = window.__theme = v;
+    window.__applyTheme();
+    if (window.__syncThemeUI) window.__syncThemeUI();
+    try { localStorage.setItem("solvelog.theme", v); } catch (e) {}
+  };
+  window.__applyTheme();
+  mq.addEventListener("change", window.__applyTheme);
+})();
+</script>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f5f5f3;
+  --surface-1: #fcfcfb;
+  --border: #e4e3df;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #8a8984;
+  --accent: #2a78d6;
+  --empty: #ebeae6;
+  --seq-1: #b7d3f6; --seq-2: #6da7ec; --seq-3: #2a78d6; --seq-4: #184f95;
+  --oj-luogu: #2a78d6; --oj-codeforces: #eb6834; --oj-atcoder: #1baf7a; --oj-projecteuler: #6250d6; --oj-codechef: #e87ba4; --oj-loj: #008300; --oj-uoj: #eda100;
+  --good: #0ca30c; --critical: #d03b3b; --warning: #b07800; --lv7: #1b2a63; --lg8: #0e1d69;
+}
+html[data-dark="1"] {
+  color-scheme: dark;
+  --bg: #121211;
+  --surface-1: #1a1a19;
+  --border: #2e2e2c;
+  --text-primary: #f0efec;
+  --text-secondary: #c3c2b7;
+  --text-muted: #8f8e88;
+  --accent: #3987e5;
+  --empty: #262624;
+  --seq-1: #184f95; --seq-2: #256abf; --seq-3: #3987e5; --seq-4: #86b6ef;
+  --oj-luogu: #3987e5; --oj-codeforces: #d95926; --oj-atcoder: #199e70; --oj-projecteuler: #9085e9; --oj-codechef: #d55181; --oj-loj: #008300; --oj-uoj: #c98500;
+  --warning: #fab219; --lv7: #8d97d9; --lg8: #8d97d9;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text-primary);
+  font: 13px/1.5 -apple-system, "SF Pro Text", "Helvetica Neue", "PingFang SC", sans-serif; }
+body { padding: 20px 24px 32px; -webkit-user-select: none; user-select: none; }
+.selectable { -webkit-user-select: text; user-select: text; }
+header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+h1 { font-size: 20px; font-weight: 600; margin: 0; }
+.sub { color: var(--text-muted); font-size: 12px; }
+.spacer { flex: 1; }
+button { font: inherit; cursor: pointer; border-radius: 6px; }
+.btn { background: var(--accent); color: #fff; border: none; padding: 6px 14px; font-weight: 500; }
+.btn:disabled { opacity: .55; cursor: default; }
+.btn2 { background: var(--surface-1); color: var(--text-primary); border: 1px solid var(--border); padding: 5px 12px; }
+.btn2.on { box-shadow: 0 0 0 2px var(--accent); }
+#importcard { display: none; }
+#importcard textarea { width: 100%; height: 64px; resize: vertical; font: 12px/1.4 ui-monospace, Menlo, monospace;
+  background: var(--bg); color: var(--text-primary); border: 1px solid var(--border); border-radius: 6px; padding: 8px; }
+#importcard .row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+#importcard .hint { color: var(--text-muted); font-size: 12px; flex: 1; }
+.filters { display: flex; gap: 4px; margin-bottom: 16px; background: var(--surface-1);
+  border: 1px solid var(--border); border-radius: 8px; padding: 3px; width: fit-content; }
+.filters button { background: none; border: none; padding: 4px 12px; color: var(--text-secondary); }
+.filters button.on { background: var(--bg); color: var(--text-primary); font-weight: 600;
+  box-shadow: 0 0 0 1px var(--border); }
+.seg { display: flex; gap: 2px; background: var(--surface-1); border: 1px solid var(--border);
+  border-radius: 7px; padding: 2px; }
+.seg button { background: none; border: none; padding: 2px 9px; font-size: 11px; color: var(--text-secondary); }
+.seg button.on { background: var(--bg); color: var(--text-primary); font-weight: 600;
+  box-shadow: 0 0 0 1px var(--border); }
+.card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px;
+  padding: 16px 18px; margin-bottom: 16px; }
+.card h2 { font-size: 13px; font-weight: 600; margin: 0 0 12px; color: var(--text-secondary); }
+.card-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; }
+.card-head h2 { margin: 0; }
+.card-head .sub { margin-left: auto; }
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+.tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+.tile .label { color: var(--text-secondary); font-size: 12px; }
+.tile .value { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.tile .note { color: var(--text-muted); font-size: 11px; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th { text-align: left; font-weight: 500; color: var(--text-muted); font-size: 12px;
+  padding: 6px 8px; border-bottom: 1px solid var(--border); }
+td { padding: 7px 8px; border-bottom: 1px solid var(--border); }
+.nowrap { white-space: nowrap; }
+tr:last-child td { border-bottom: none; }
+th.num, td.num { text-align: right; }
+tfoot td { font-weight: 600; border-top: 1px solid var(--border); }
+tr.acc td { color: var(--text-secondary); font-size: 12px; padding-top: 4px; padding-bottom: 4px; }
+tr.acc .accname { padding-left: 22px; }
+.who { color: var(--text-muted); font-size: 11px; margin-left: 4px; }
+.oj { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.v { font-weight: 600; font-size: 12px; }
+.v-AC { color: var(--good); }
+.v-WA, .v-UNAC, .v-RE, .v-TLE, .v-MLE, .v-OLE, .v-CE { color: var(--critical); }
+.v-PENDING, .v-JUDGING, .v-PARTIAL, .v-UKE { color: var(--warning); }
+a { color: var(--accent); text-decoration: none; cursor: pointer; }
+a:hover { text-decoration: underline; }
+.title { color: var(--text-secondary); max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.heat-wrap { overflow-x: auto; }
+.heat-legend { display: flex; align-items: center; gap: 4px; justify-content: flex-end;
+  color: var(--text-muted); font-size: 11px; margin-top: 6px; }
+.heat-legend span.sw { width: 11px; height: 11px; border-radius: 2px; display: inline-block; }
+svg text { fill: var(--text-muted); font-size: 10px; }
+#chart rect { transition: opacity .12s ease; }
+#chart rect:hover { opacity: .78; }
+.chart-wrap { margin-top: 4px; }
+.chart-note { color: var(--text-muted); font-size: 11px; margin-top: 8px; }
+.chart-empty { color: var(--text-muted); padding: 36px 0; text-align: center; }
+#tip { position: fixed; pointer-events: none; background: var(--surface-1); color: var(--text-primary);
+  border: 1px solid var(--border); border-radius: 6px; padding: 6px 9px; font-size: 12px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.15); display: none; z-index: 10; white-space: nowrap; }
+#log { white-space: pre-wrap; font: 11px/1.4 ui-monospace, Menlo, monospace; color: var(--text-secondary);
+  max-height: 160px; overflow: auto; margin: 0; }
+#logcard { display: none; }
+.empty-msg { color: var(--text-muted); padding: 40px 0; text-align: center; }
+</style>
+</head>
+<body>
+<header>
+  <h1>SolveLog</h1>
+  <span class="sub" id="updated"></span>
+  <span class="spacer"></span>
+  <span class="sub" id="syncmsg"></span>
+  <div class="seg" id="theme" role="group" aria-label="Appearance">
+    <button data-v="auto">Auto</button>
+    <button data-v="light">Light</button>
+    <button data-v="dark">Dark</button>
+  </div>
+  <button class="btn2" id="settingsbtn" title="Accounts, sign-ins, ratings and data (⌘,)">Settings</button>
+  <button class="btn2" id="importbtn" title="Import a page or sign-in copied by the SolveLog userscript (⌘⇧V)">Import</button>
+  <button class="btn" id="syncbtn">Sync</button>
+</header>
+
+<div class="card" id="importcard">
+  <h2>Import from the userscript</h2>
+  <textarea id="importtext" spellcheck="false" placeholder="Click here and press ⌘V to paste what the userscript’s “Copy to SolveLog” button copied (starts with solvelog-cookie:)"></textarea>
+  <div class="row">
+    <span class="hint">Luogu practice / record pages and the Project Euler progress page are imported directly; a UOJ sign-in is saved to the Keychain and UOJ is synced.</span>
+    <button class="btn2" id="importcancel">Cancel</button>
+    <button class="btn" id="importgo">Import</button>
+  </div>
+</div>
+
+<div class="filters" id="filters"></div>
+
+<div class="tiles" id="tiles"></div>
+
+<div class="card">
+  <h2>By platform</h2>
+  <table id="summary"></table>
+</div>
+
+<div class="card" id="chartcard">
+  <div class="card-head">
+    <h2>Rating distribution</h2>
+    <div class="seg" id="chart-src" role="group" aria-label="Rating source"></div>
+    <span class="sub" id="chart-meta"></span>
+  </div>
+  <div class="chart-wrap"><svg id="chart"></svg></div>
+  <div class="chart-note" id="chart-note"></div>
+</div>
+
+<div class="card">
+  <h2 id="heat-title">Last 12 months</h2>
+  <div class="heat-wrap"><svg id="heat"></svg></div>
+  <div class="heat-legend">Less
+    <span class="sw" style="background:var(--empty)"></span>
+    <span class="sw" style="background:var(--seq-1)"></span>
+    <span class="sw" style="background:var(--seq-2)"></span>
+    <span class="sw" style="background:var(--seq-3)"></span>
+    <span class="sw" style="background:var(--seq-4)"></span>More
+  </div>
+</div>
+
+<div class="card">
+  <h2>Recent submissions</h2>
+  <table id="recent"></table>
+</div>
+
+<div class="card" id="logcard">
+  <h2>Sync log</h2>
+  <pre id="log" class="selectable"></pre>
+</div>
+
+<div id="tip"></div>
+
+<script>
+const OJ_NAME = { luogu: "Luogu", codeforces: "Codeforces", atcoder: "AtCoder", projecteuler: "Project Euler", codechef: "CodeChef", loj: "LibreOJ", uoj: "UOJ" };
+const OJ_ORDER = ["luogu", "codeforces", "atcoder", "projecteuler", "codechef", "loj", "uoj"];  // colors are fixed per platform, independent of the filter
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// Rating sources. Each one belongs to one platform (clist covers several) and buckets
+// the way that platform itself does: Luogu's 9 official levels, CF rank colours,
+// AtCoder colour tiers, CodeChef stars, Project Euler levels 0-40.
+const tier = (lo, hi, label, color, tip) => ({ lo, hi, label, color, tip });
+const SRC = {
+  luogu: { label: "Luogu", ojs: ["luogu"], kind: "levels",
+    levels: [["暂无评定", "#bfbfbf"], ["入门", "#fe4c61"], ["普及−", "#f39c11"], ["普及", "#ffc116"],
+             ["普及+/提高−", "#52c41a"], ["提高", "#13c2c2"], ["提高+/省选−", "#3498db"],
+             ["省选/NOI−", "#9d3dcf"], ["NOI/NOI+/CTS", "var(--lg8)"]],
+    note: "Imported from your Luogu practice page, so it matches its 难易度统计 exactly." },
+  cf: { label: "Codeforces", ojs: ["codeforces"], kind: "width", width: 100, min: 800, max: 3500,
+    color: v => v < 1200 ? "#808080" : v < 1400 ? "#008000" : v < 1600 ? "#03a89e" : v < 1900 ? "#3b5bdb"
+              : v < 2100 ? "#aa00aa" : v < 2400 ? "#ff8c00" : "#e03131",
+    note: "Codeforces problem rating, coloured by the matching user rank. Gym and unrated problems are left out." },
+  ken: { label: "AtCoder", ojs: ["atcoder"], kind: "tiers",
+    // AtCoder Problems clips low difficulties the same way, so nothing goes negative
+    map: v => v >= 400 ? v : Math.round(400 / Math.exp((400 - v) / 400)),
+    tiers: [tier(0, 400, "Gray", "#808080"), tier(400, 800, "Brown", "#804000"), tier(800, 1200, "Green", "#008000"),
+            tier(1200, 1600, "Cyan", "#00c0c0"), tier(1600, 2000, "Blue", "#3b5bdb"), tier(2000, 2400, "Yellow", "#c0c000"),
+            tier(2400, 2800, "Orange", "#ff8000"), tier(2800, 1e9, "Red", "#e03131")],
+    note: "AtCoder Problems difficulty in AtCoder colour tiers (low values clipped like AtCoder Problems does)." },
+  pe: { label: "PE Level", ojs: ["projecteuler"], kind: "width", width: 1, min: 0, max: 40, label0: "Level",
+    color: () => "var(--accent)",
+    note: "Project Euler difficulty level of each solved problem (0 = easiest, 40 = hardest). Problems still unrated are left out." },
+  cc: { label: "CodeChef", ojs: ["codechef"], kind: "tiers",
+    tiers: [tier(0, 1400, "1★", "#666666"), tier(1400, 1600, "2★", "#1e7d22"), tier(1600, 1800, "3★", "#3366cc"),
+            tier(1800, 2000, "4★", "#684273"), tier(2000, 2200, "5★", "#ffbf00"), tier(2200, 2500, "6★", "#ff7f00"),
+            tier(2500, 1e9, "7★", "#d0011b")],
+    note: "CodeChef's official difficulty rating, grouped by the star band it corresponds to." },
+  clist: { label: "CLIST", ojs: null, kind: "auto",
+    note: "clist.by problem rating (one scale across platforms)." },
+};
+const SRC_ORDER = ["luogu", "cf", "ken", "pe", "cc", "clist"];
+const NO_CHART = ["loj"];   // platforms without a rating chart
+
+let DATA = null, FILTER = "all", CHART_SRC = null;
+
+const post = msg => window.webkit && window.webkit.messageHandlers.app.postMessage(msg);
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt = n => (n == null ? "–" : n.toLocaleString("en-US"));
+const pad = n => String(n).padStart(2, "0");
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const ojLabel = oj => `<span class="oj"><span class="dot" style="background:var(--oj-${oj})"></span>${esc(OJ_NAME[oj] || oj)}</span>`;
+function when(ts) {
+  if (!ts) return "–";
+  const d = new Date(ts * 1000);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+window.render = function (data) {
+  DATA = data;
+  $("updated").textContent = data.db_mtime ? "Updated " + when(data.db_mtime) : "";
+  renderFilters();
+  renderAll();
+  renderChart();
+};
+
+function renderFilters() {
+  const ojs = OJ_ORDER.filter(o => DATA.summary.some(s => s.oj === o));
+  const opts = [["all", "All"]].concat(ojs.map(o => [o, OJ_NAME[o]]));
+  $("filters").innerHTML = opts.map(([k, v]) =>
+    `<button data-k="${k}" class="${k === FILTER ? "on" : ""}">${esc(v)}</button>`).join("");
+  $("filters").querySelectorAll("button").forEach(b => b.onclick = () => { FILTER = b.dataset.k; renderFilters(); renderAll(); renderChart(); });
+}
+
+function renderAll() {
+  if (!DATA.summary.length) {
+    $("summary").innerHTML = (DATA.configured || []).length
+      ? `<tr><td class="empty-msg">No submissions yet — click <b>Sync</b> to download them.</td></tr>`
+      : `<tr><td class="empty-msg">Welcome to SolveLog! Open <a id="opensettings">Settings</a> to add your Codeforces, AtCoder, CodeChef, LibreOJ or UOJ handles, import a UOJ sign-in, or send your Luogu practice page / Project Euler progress page with the userscript. Then click <b>Sync</b>.</td></tr>`;
+    const os = $("opensettings"); if (os) os.onclick = () => post({ cmd: "settings" });
+    return;
+  }
+  const pick = r => FILTER === "all" || r.oj === FILTER;
+  const sum = DATA.summary.filter(pick);
+  const daily = DATA.daily.filter(pick);
+
+  // summary tiles
+  const byDay = {};
+  daily.forEach(r => { const d = byDay[r.date] || (byDay[r.date] = { total: 0, ac: 0 }); d.total += r.total; d.ac += r.ac; });
+  const today = new Date();
+  let last30 = 0, streak = 0;
+  for (let i = 0; i < 30; i++) { const d = new Date(today); d.setDate(d.getDate() - i); last30 += (byDay[ymd(d)] || {}).total || 0; }
+  for (let i = 0; ; i++) {  // a day without submissions yet does not break the streak
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    if ((byDay[ymd(d)] || {}).total) streak++; else if (i > 0) break;
+    if (i > 400) break;
+  }
+  // Solved-only platforms (Project Euler, Luogu without imported record pages) have no submission data
+  const subs = sum.filter(s => !s.solved_only);
+  const tot = subs.reduce((a, s) => a + s.total, 0), solved = sum.reduce((a, s) => a + s.solved, 0),
+        ac = subs.reduce((a, s) => a + s.ac, 0);
+  $("tiles").innerHTML = [
+    ["Problems solved", fmt(solved), FILTER === "all" ? "Unique per platform, then summed" : "Unique problems"],
+    ["Submissions", subs.length ? fmt(tot) : "–", subs.length ? `Acceptance ${tot ? (ac / tot * 100).toFixed(1) : 0}%` : "Imported pages have no submission history"],
+    ["Last 30 days", fmt(last30), ""],
+    ["Current streak", fmt(streak), ""],
+  ].map(([l, v, n]) => `<div class="tile"><div class="label">${l}</div><div class="value">${v}</div>${n ? `<div class="note">${esc(n)}</div>` : ""}</div>`).join("");
+
+  // per-platform table
+  $("summary").innerHTML =
+    `<thead><tr><th>Platform</th><th class="num">Submissions</th><th class="num">AC records</th><th class="num">Problems solved</th><th class="num">Acceptance</th><th class="num">Last submission</th></tr></thead><tbody>` +
+    sum.map(s => {
+      const imp = s.solved_only, dash = `<span class="sub" title="Imported from a page: solved problems only">–</span>`;
+      const tag = s.page_import ? ` <span class="sub" title="${s.solved_only ? "Solved problems from an imported page" : "Submissions only from the record pages you imported"}">(imported)</span>` : "";
+      const tried = s.attempted ? `<div class="sub" style="font-size:11px">${fmt(s.attempted)} tried, unsolved</div>` : "";
+      const row = `<tr><td>${ojLabel(s.oj)}${tag}</td><td class="num">${imp ? dash : fmt(s.total)}</td><td class="num">${imp ? dash : fmt(s.ac)}</td>
+        <td class="num">${fmt(s.solved)}${tried}</td><td class="num">${imp ? dash : (s.ac / s.total * 100).toFixed(1) + "%"}</td><td class="num">${when(s.last)}</td></tr>`;
+      return row;
+    }).join("") +
+    `</tbody>` + (sum.length > 1 ? `<tfoot><tr><td>Total</td><td class="num">${fmt(tot)}</td><td class="num">${fmt(ac)}</td><td class="num">${fmt(solved)}</td><td class="num">${tot ? (ac / tot * 100).toFixed(1) + "%" : "–"}</td><td></td></tr></tfoot>` : "");
+
+  renderHeat(byDay);
+
+  // recent submissions
+  const rec = DATA.recent.filter(pick).slice(0, 50);
+  $("recent").innerHTML =
+    `<thead><tr><th>Time</th><th>Platform</th><th>Problem</th><th></th><th>Verdict</th><th class="num">Score</th><th>Language</th></tr></thead><tbody>` +
+    rec.map(r => `<tr><td class="sub nowrap">${when(r.time)}</td><td>${ojLabel(r.oj)}</td>
+      <td><a data-url="${esc(r.url)}">${esc(r.problem_id)}</a></td><td class="title selectable">${esc(r.title)}</td>
+      <td><span class="v v-${esc(r.verdict)}">${esc(r.verdict)}</span></td>
+      <td class="num">${r.oj === "projecteuler" ? "" : (r.score == null ? "" : r.score)}</td><td class="sub">${esc(r.language || "")}</td></tr>`).join("") + `</tbody>`;
+  $("recent").querySelectorAll("a[data-url]").forEach(a => a.onclick = () => post({ cmd: "open", url: a.dataset.url }));
+}
+
+// ---------------------------------------------------------------- rating chart
+
+function sourceValues(key) {
+  const i = DATA.rated_cols.indexOf(key);
+  const vals = [];
+  if (i < 0) return vals;
+  const ojs = SRC[key].ojs;
+  DATA.rated.forEach(r => {
+    if (FILTER !== "all" && r[0] !== FILTER) return;
+    if (ojs && !ojs.includes(r[0])) return;
+    const v = r[i];
+    if (v != null) vals.push(v);
+  });
+  return vals;
+}
+
+function median(vals) {
+  if (!vals.length) return null;
+  const a = vals.slice().sort((x, y) => x - y), m = a.length >> 1;
+  return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+}
+
+// Axis top: the smallest "nice" value >= v whose quarter is a whole, nice number (4 gridlines)
+function niceCeil(v) {
+  if (v <= 4) return 4;
+  const q = v / 4, p = Math.pow(10, Math.floor(Math.log10(q)));
+  for (const m of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) {
+    const step = m * p;
+    if (step >= q && Number.isInteger(step)) return step * 4;
+  }
+  return Math.ceil(q) * 4;
+}
+
+function buildBuckets(key) {
+  const S = SRC[key];
+  let vals = sourceValues(key);
+  if (!vals.length) return null;
+  if (S.map) vals = vals.map(S.map);
+  const out = { total: vals.length, median: median(vals), min: Math.min.apply(null, vals), max: Math.max.apply(null, vals) };
+  if (S.kind === "levels") {
+    const counts = S.levels.map(() => 0);
+    vals.forEach(v => { counts[Math.max(0, Math.min(S.levels.length - 1, Math.round(v)))]++; });
+    out.buckets = counts.map((n, i) => ({ n, label: S.levels[i][0], color: S.levels[i][1], tip: S.levels[i][0] }));
+    out.median = null;
+    return out;
+  }
+  if (S.kind === "tiers") {
+    out.buckets = S.tiers.map(tr => ({ n: 0, label: tr.label, color: tr.color,
+      tip: `${tr.label} · ${fmt(tr.lo)}${tr.hi < 1e9 ? "–" + fmt(tr.hi - 1) : "+"}` }));
+    vals.forEach(v => { const i = S.tiers.findIndex(tr => v >= tr.lo && v < tr.hi); out.buckets[i < 0 ? 0 : i].n++; });
+    return out;
+  }
+  let W, lo, hi;
+  if (S.kind === "width") {
+    W = S.width;
+    lo = Math.min(S.min, Math.floor(out.min / W) * W);
+    hi = Math.max(S.max, Math.floor(out.max / W) * W) + W;
+  } else {   // auto: bucket width adapts to the sample size so sparse sources stay readable
+    const target = Math.max(4, Math.min(14, Math.round(Math.sqrt(vals.length) * 1.5)));
+    W = [50, 100, 200, 250, 500, 1000, 2000].find(st => (out.max - out.min) / st <= target) || 2000;
+    lo = Math.floor(out.min / W) * W; hi = Math.ceil((out.max + 1) / W) * W;
+    if (hi - lo < W) hi = lo + W;
+  }
+  const n = Math.round((hi - lo) / W);
+  out.buckets = [];
+  for (let i = 0; i < n; i++) {
+    const a = lo + i * W;
+    out.buckets.push({ n: 0, label: fmt(a), color: S.color ? S.color(a) : null,
+      tip: W === 1 ? `${S.label0 || ""} ${a}`.trim() : `${fmt(a)}–${fmt(a + W - 1)}` });
+  }
+  vals.forEach(v => { out.buckets[Math.max(0, Math.min(n - 1, Math.floor((v - lo) / W)))].n++; });
+  return out;
+}
+
+function renderChart() {
+  if (!DATA) return;
+  const card = $("chartcard");
+  if (NO_CHART.includes(FILTER)) { card.style.display = "none"; return; }
+  card.style.display = "";
+  const tabs = SRC_ORDER.filter(k => sourceValues(k).length);
+  const bar = $("chart-src");
+  if (!tabs.length) {
+    bar.innerHTML = "";
+    $("chart-note").textContent = "";
+    $("chart").innerHTML = "";
+    $("chart").setAttribute("height", "1");
+    $("chart-meta").textContent = {
+      uoj: "UOJ has no official difficulty. Add a clist.by API key to config.json to chart clist ratings.",
+      codechef: "No ratings yet — they are fetched on the next CodeChef sync.",
+    }[FILTER] || "No rating data yet — run a sync to collect problem ratings.";
+    return;
+  }
+  if (!tabs.includes(CHART_SRC)) {
+    CHART_SRC = tabs.reduce((a, b) => sourceValues(b).length > sourceValues(a).length ? b : a, tabs[0]);
+  }
+  bar.innerHTML = tabs.map(k => `<button data-v="${k}" class="${k === CHART_SRC ? "on" : ""}">${SRC[k].label}</button>`).join("");
+  bar.querySelectorAll("button").forEach(b => b.onclick = () => { CHART_SRC = b.dataset.v; renderChart(); });
+
+  const series = buildBuckets(CHART_SRC);
+  const stat = series.median != null ? ` · median ${fmt(Math.round(series.median))}` : "";
+  $("chart-meta").textContent = `${fmt(series.total)} solved problem${series.total === 1 ? "" : "s"}${stat}`;
+  $("chart-note").textContent = SRC[CHART_SRC].note || "";
+  drawBars(series, SRC[CHART_SRC].kind);
+}
+
+function drawBars(series, kind) {
+  const svg = $("chart");
+  const W = Math.max(320, svg.parentNode.clientWidth);
+  const H = 216, L = 42, R = 10, T = 10, B = 24;
+  const pw = W - L - R, ph = H - T - B;
+  const n = series.buckets.length;
+  const step = pw / n;
+  const barW = Math.min(46, step * 0.66);
+  const top = niceCeil(Math.max.apply(null, series.buckets.map(b => b.n)));
+
+  let g = "";
+  for (let i = 0; i <= 4; i++) {
+    const y = T + ph - ph * i / 4;
+    if (i) g += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" style="stroke:var(--border);stroke-width:1"/>`;
+    g += `<text x="${L - 8}" y="${y + 3}" text-anchor="end">${fmt(Math.round(top * i / 4))}</text>`;
+  }
+
+  const every = Math.ceil(n / Math.max(1, Math.floor(pw / 62)));
+  series.buckets.forEach((b, i) => {
+    const x = L + i * step + (step - barW) / 2;
+    const h = b.n ? Math.max(2, ph * b.n / top) : 0;
+    const y = T + ph - h;
+    const fill = b.color ? `fill:${b.color}` : "fill:var(--accent)";
+    if (b.n) g += `<rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="3"
+      style="${fill}" data-i="${i}"/>`;
+    if (i % every === 0) g += `<text x="${L + i * step + step / 2}" y="${H - 8}" text-anchor="middle">${esc(b.label)}</text>`;
+  });
+
+  svg.setAttribute("width", W);
+  svg.setAttribute("height", H);
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML = g;
+
+  const tip = $("tip");
+  svg.querySelectorAll("rect").forEach(r => {
+    const b = series.buckets[+r.dataset.i];
+    r.onmousemove = e => {
+      const pct = series.total ? (b.n / series.total * 100).toFixed(1) : "0.0";
+      tip.innerHTML = `<b>${esc(b.tip)}</b><br>${fmt(b.n)} problem${b.n === 1 ? "" : "s"} · ${pct}%`;
+      tip.style.display = "block";
+      const x = Math.min(e.clientX + 12, window.innerWidth - tip.offsetWidth - 8);
+      tip.style.left = x + "px"; tip.style.top = (e.clientY - tip.offsetHeight - 10) + "px";
+    };
+    r.onmouseleave = () => tip.style.display = "none";
+  });
+}
+
+function renderHeat(byDay) {
+  const CELL = 12, GAP = 2, STEP = CELL + GAP, LEFT = 30, TOP = 18, WEEKS = 53;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const dow = (today.getDay() + 6) % 7;            // Monday = 0
+  const start = new Date(today); start.setDate(today.getDate() - dow - (WEEKS - 1) * 7);
+  const level = n => n === 0 ? "var(--empty)" : n < 3 ? "var(--seq-1)" : n < 6 ? "var(--seq-2)" : n < 11 ? "var(--seq-3)" : "var(--seq-4)";
+  let cells = "", months = "", lastMonth = -1, yearTotal = 0, activeDays = 0;
+  for (let w = 0; w < WEEKS; w++) {
+    for (let d = 0; d < 7; d++) {
+      const day = new Date(start); day.setDate(start.getDate() + w * 7 + d);
+      if (day > today) continue;
+      const key = ymd(day), v = byDay[key] || { total: 0, ac: 0 };
+      yearTotal += v.total; if (v.total) activeDays++;
+      cells += `<rect x="${LEFT + w * STEP}" y="${TOP + d * STEP}" width="${CELL}" height="${CELL}" rx="2"
+        fill="${level(v.total)}" data-d="${key}" data-t="${v.total}" data-a="${v.ac}"/>`;
+      if (d === 0 && day.getMonth() !== lastMonth) {
+        lastMonth = day.getMonth();
+        if (w < WEEKS - 2) months += `<text x="${LEFT + w * STEP}" y="11">${MONTHS[day.getMonth()]}</text>`;
+      }
+    }
+  }
+  const wd = ["Mon", "", "Wed", "", "Fri", "", "Sun"].map((t, i) => t ? `<text x="4" y="${TOP + i * STEP + 10}">${t}</text>` : "").join("");
+  const svg = $("heat");
+  svg.setAttribute("width", LEFT + WEEKS * STEP); svg.setAttribute("height", TOP + 7 * STEP);
+  svg.innerHTML = months + wd + cells;
+  $("heat-title").textContent = `Last 12 months · ${fmt(yearTotal)} submissions · ${activeDays} active days`;
+
+  const tip = $("tip");
+  svg.querySelectorAll("rect").forEach(r => {
+    r.onmousemove = e => {
+      const [y, m, d] = r.dataset.d.split("-");
+      tip.innerHTML = `<b>${MONTHS[+m - 1]} ${+d}, ${y}</b><br>${r.dataset.t} submissions · ${r.dataset.a} accepted`;
+      tip.style.display = "block";
+      const x = Math.min(e.clientX + 12, window.innerWidth - tip.offsetWidth - 8);
+      tip.style.left = x + "px"; tip.style.top = (e.clientY - tip.offsetHeight - 10) + "px";
+    };
+    r.onmouseleave = () => tip.style.display = "none";
+  });
+}
+
+// ---------------------------------------------------------------- theme
+
+function renderTheme() {
+  const on = window.__theme || "auto";
+  $("theme").querySelectorAll("button").forEach(b => {
+    b.classList.toggle("on", b.dataset.v === on);
+    b.onclick = () => {
+      window.__setTheme(b.dataset.v);
+      renderTheme();
+      post({ cmd: "theme", value: b.dataset.v });
+    };
+  });
+}
+renderTheme();
+window.__syncThemeUI = renderTheme;
+
+let resizeTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => { if (DATA) { renderChart(); } }, 150);
+});
+
+// sync
+$("syncbtn").onclick = () => {
+  $("syncbtn").disabled = true;
+  $("syncmsg").textContent = "Syncing… (the first sync of a big account can take a few minutes)";
+  post({ cmd: "sync" });
+};
+$("settingsbtn").onclick = () => post({ cmd: "settings" });
+window.syncStarted = function () {
+  $("syncbtn").disabled = true;
+  $("syncmsg").textContent = "Syncing…";
+};
+window.cookieImporting = function (name) {
+  $("syncmsg").textContent = `Saved the ${name} sign-in — syncing ${name}…`;
+};
+window.syncDone = function (ok, log) {
+  $("syncbtn").disabled = false;
+  $("syncmsg").textContent = ok ? "Sync complete" : "Some platforms failed — see the log below";
+  $("logcard").style.display = ok ? "none" : "block";
+  $("log").textContent = log;
+  if (ok) setTimeout(() => { $("syncmsg").textContent = ""; }, 4000);
+};
+// Importing a cookie copied by the SolveLog userscript (payload: "solvelog-cookie:{json}")
+const COOKIE_PREFIX = "solvelog-cookie:", PAGE_PREFIX = "solvelog-page:";
+function startImport(text) {
+  text = (text || "").trim();
+  if (text.startsWith(COOKIE_PREFIX)) text = text.slice(COOKIE_PREFIX.length);
+  else if (text.startsWith(PAGE_PREFIX)) text = text.slice(PAGE_PREFIX.length);
+  let ok = false;
+  try { const o = JSON.parse(text); ok = !!(o && o.oj && (o.cookie || o.html || o.passed || o.records)); } catch (e) {}
+  if (!ok) {
+    $("syncmsg").textContent = "That doesn't look like a SolveLog cookie — use the userscript's copy button";
+    return;
+  }
+  $("syncbtn").disabled = true; $("importgo").disabled = true;
+  $("syncmsg").textContent = "Importing cookie and syncing…";
+  post({ cmd: "setCookie", payload: text });
+}
+function toggleImport(show) {
+  const card = $("importcard");
+  show = show === undefined ? card.style.display !== "block" : show;
+  card.style.display = show ? "block" : "none";
+  $("importbtn").classList.toggle("on", show);
+  if (show) $("importtext").focus(); else $("importtext").value = "";
+}
+$("importbtn").onclick = () => toggleImport();
+$("importcancel").onclick = () => toggleImport(false);
+$("importgo").onclick = () => startImport($("importtext").value);
+// Pasting a payload anywhere in the window (including the box) imports immediately
+document.addEventListener("paste", e => {
+  const text = ((e.clipboardData && e.clipboardData.getData("text/plain")) || "").trim();
+  if (!text.startsWith(COOKIE_PREFIX) && !text.startsWith(PAGE_PREFIX)) return;
+  e.preventDefault();
+  toggleImport(true);
+  $("importtext").value = "solvelog-cookie:…(received)";
+  startImport(text);
+});
+window.cookieDone = function (ok, oj, log) {
+  $("syncbtn").disabled = false; $("importgo").disabled = false;
+  if (oj) toggleImport(false);   // cookie was saved — clear the box (it held a credential)
+  const name = OJ_NAME[oj] || oj;
+  $("syncmsg").textContent = ok ? `${name} cookie saved — sync OK` : (oj ? `${name} cookie saved, but sync failed — see the log below` : "Cookie import failed — see the log below");
+  $("logcard").style.display = ok ? "none" : "block";
+  $("log").textContent = log;
+  if (ok) setTimeout(() => { $("syncmsg").textContent = ""; }, 5000);
+};
+window.loadError = function (msg) {
+  $("summary").innerHTML = `<tr><td class="empty-msg selectable">Could not load data: ${esc(msg)}</td></tr>`;
+};
+
+post({ cmd: "load" });
+</script>
+</body>
+</html>

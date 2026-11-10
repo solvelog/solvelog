@@ -1,0 +1,11 @@
+.build/
+build/
+.swiftpm/
+*.xcodeproj/
+xcuserdata/
+.DS_Store
+# never commit personal data
+*.db
+*.db-wal
+*.db-shm
+settings.json
