@@ -11,9 +11,8 @@ heatmap, difficulty distributions and your recent submissions.
 > mistakes: please read the code before trusting it with your sign-in, and
 > [open an issue](https://github.com/solvelog/solvelog/issues) if something looks wrong.
 >
-> **由 AI 编写。** SolveLog 的代码主要由 **Claude Opus 5.5**（Anthropic 的 AI 模型）根据维护者的需求和反馈完成。
-> 维护者负责确定功能、用真实账号测试并检查结果；Swift 应用、仪表盘页面、油猴脚本和本 README 均由 Claude 编写。
-> 和所有软件一样（尤其是 AI 编写的软件），其中可能存在错误：在把登录信息交给它之前请先阅读代码，发现问题欢迎提
+> SolveLog 的代码主要由 **Claude Opus 5.5** 完成。
+> 其中可能存在错误：在把登录信息交给它之前请先阅读代码，发现问题欢迎提
 > [Issue](https://github.com/solvelog/solvelog/issues)。
 
 | Judge | How SolveLog reads it | Sign-in needed |
