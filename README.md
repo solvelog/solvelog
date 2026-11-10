@@ -56,9 +56,17 @@ macOS may ask once whether SolveLog may read its own Keychain items — choose *
 
 ### The userscript
 
-Install [Tampermonkey](https://www.tampermonkey.net/), then open
-<https://github.com/solvelog/solvelog/raw/main/userscript/solvelog-cookies.user.js> — Tampermonkey
-offers to install it (and keeps it updated). It adds a button to the bottom right of the pages below.
+Install [Tampermonkey](https://www.tampermonkey.net/), then install the **SolveLog Sign-in Helper**:
+
+* **Recommended:** from Greasy Fork — <https://greasyfork.org/en/scripts/604651-solvelog-sign-in-helper>
+  (click *Install this script*).
+* **If Greasy Fork is unreachable** (it can be slow or blocked in some regions): open
+  <https://github.com/solvelog/solvelog/raw/main/userscript/solvelog-cookies.user.js> and Tampermonkey
+  offers to install it.
+
+Either way Tampermonkey keeps it updated from where you installed it. The Greasy Fork copy is synced
+automatically from this repository, so both are the same script. It adds a button to the bottom right of
+the pages below.
 
 ### Luogu and Project Euler: send the page you are looking at
 
